@@ -115,7 +115,7 @@ def gerar_pedido(numero: int) -> dict:
     }
 
 
-def executar(total: int, intervalo_log: int = 1000):
+def executar(total: int, intervalo_log: int = 1000, target_routing_key: str = None):
     """Conecta ao RabbitMQ e envia `total` pedidos."""
     print(f"[PRODUTOR] Conectando ao RabbitMQ em {RABBITMQ_HOST}...")
     connection = conectar()
@@ -132,7 +132,7 @@ def executar(total: int, intervalo_log: int = 1000):
     erros = 0
 
     for i in range(1, total + 1):
-        routing_key = random.choice(ROUTING_KEYS)
+        routing_key = target_routing_key if target_routing_key else random.choice(ROUTING_KEYS)
         pedido = gerar_pedido(i)
         corpo = json.dumps(pedido).encode("utf-8")
 

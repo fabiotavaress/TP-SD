@@ -300,3 +300,57 @@ docker stack rm tp01
 # Sai do modo Swarm (volta ao modo normal)
 docker swarm leave --force
 ```
+
+---
+
+## Deploy na Nuvem AWS (EC2)
+
+Para tornar o painel acessível para qualquer pessoa (ex: pelo celular), podemos subir toda a infraestrutura para a AWS usando o **EC2** e o **Docker**.
+
+### Passo a Passo Básico:
+
+1. **Crie uma Instância EC2:**
+   - Acesse o Console da AWS.
+   - Inicie uma instância EC2 usando a imagem **Ubuntu Server**.
+   - Tipo de instância: `t2.micro` (gratuita) ou `t3.small` (se precisar de mais recursos para o RabbitMQ).
+
+2. **Libere as Portas no Security Group:**
+   Na configuração de rede da EC2, permita tráfego de entrada para as seguintes portas:
+   - `22` (SSH - para você acessar o terminal)
+   - `5000` (Para o Dashboard Interativo Flask)
+   - `15672` (Para o Painel de Controle do RabbitMQ)
+
+3. **Acesse a Máquina via SSH e Instale o Docker:**
+   ```bash
+   # Atualize a máquina
+   sudo apt update && sudo apt upgrade -y
+   
+   # Instale o Docker e o Docker Compose
+   sudo apt install docker.io docker-compose -y
+   
+   # Instale o Python e pip
+   sudo apt install python3 python3-pip -y
+   ```
+
+4. **Transfira o Projeto:**
+   Você pode clonar este repositório via `git clone <seu-repo>` diretamente dentro da máquina EC2.
+
+5. **Inicie a Infraestrutura na Nuvem:**
+   Dentro da pasta do projeto na EC2:
+   ```bash
+   # Sobe o cluster RabbitMQ
+   sudo docker-compose up -d
+   
+   # Une os nós do RabbitMQ
+   sudo bash init_cluster.sh
+   
+   # Instala dependências e liga o Dashboard
+   pip3 install -r requirements.txt
+   python3 dashboard.py
+   ```
+
+6. **Acesse pelo Celular:**
+   Abra o navegador e digite o **IP Público da sua EC2** seguido da porta:
+   `http://<IP-PUBLICO-DA-EC2>:5000`
+   
+   O painel topológico vai carregar e você e seus amigos poderão usar a nova interface para **Produzir** e **Consumir** mensagens interativamente de onde estiverem!

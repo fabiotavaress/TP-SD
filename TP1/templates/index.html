@@ -10,7 +10,9 @@
         body { background-color: #ffffff; color: #1e293b; font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; }
         header { padding: 1rem 2rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background-color: #f8fafc; }
         .main-container { display: flex; flex: 1; overflow: hidden; }
-        .legend { width: 120px; border-right: 2px solid #1e293b; padding: 1.5rem 0; display: flex; flex-direction: column; align-items: center; gap: 2rem; background: #ffffff; overflow-y: auto; }
+        .sidebar { width: 280px; border-right: 2px solid #1e293b; display: flex; flex-direction: column; background: #f8fafc; overflow-y: auto; flex-shrink: 0; }
+        .legend-container { padding: 1.5rem 0; display: flex; flex-direction: row; justify-content: center; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #e2e8f0; background: #ffffff; }
+        .interactive-panel { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
         .network-container { flex: 1; position: relative; background-color: #ffffff; }
         #network { width: 100%; height: 100%; }
         
@@ -41,23 +43,52 @@
     </header>
 
     <div class="main-container">
-        <!-- Barra Lateral: Legenda -->
-        <div class="legend">
-            <div class="legend-item">
-                <div class="shape-producer"></div>
-                <span>producer</span>
+        <!-- Barra Lateral -->
+        <div class="sidebar">
+            <div class="legend-container">
+                <div class="legend-item"><div class="shape-producer"></div><span>producer</span></div>
+                <div class="legend-item"><div class="shape-exchange"></div><span>exchange</span></div>
+                <div class="legend-item"><div class="shape-queue"></div><span>queue</span></div>
+                <div class="legend-item"><div class="shape-consumer"></div><span>consumer</span></div>
             </div>
-            <div class="legend-item">
-                <div class="shape-exchange"></div>
-                <span>exchange</span>
-            </div>
-            <div class="legend-item">
-                <div class="shape-queue"></div>
-                <span>queue</span>
-            </div>
-            <div class="legend-item">
-                <div class="shape-consumer"></div>
-                <span>consumer</span>
+            
+            <div class="interactive-panel">
+                <h2 class="text-lg font-bold text-slate-800 border-b border-slate-300 pb-2">Painel Interativo</h2>
+                
+                <!-- Produzir -->
+                <div class="bg-white p-3 rounded shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-semibold text-emerald-700 mb-2 flex justify-between">
+                        <span>📤 Produzir Mensagens</span>
+                    </h3>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs text-slate-600 font-medium">Quantidade (1-1000)</label>
+                        <input type="number" id="prod-count" value="10" min="1" max="1000" class="border rounded p-1 text-sm outline-none focus:border-emerald-500 transition">
+                        <label class="text-xs text-slate-600 font-medium">Fila de Destino</label>
+                        <select id="prod-queue" class="border rounded p-1 text-sm outline-none focus:border-emerald-500 bg-white">
+                            <option value="all">Todas (Aleatório)</option>
+                            <option value="orders.payment">Pagamento</option>
+                            <option value="orders.stock">Estoque</option>
+                            <option value="orders.notification">Notificação</option>
+                        </select>
+                        <button onclick="sendProduce()" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-1.5 rounded transition">Enviar</button>
+                    </div>
+                </div>
+
+                <!-- Consumir -->
+                <div class="bg-white p-3 rounded shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-semibold text-amber-700 mb-2">📥 Consumir Mensagens</h3>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs text-slate-600 font-medium">Quantidade</label>
+                        <input type="number" id="cons-count" value="5" min="1" class="border rounded p-1 text-sm outline-none focus:border-amber-500 transition">
+                        <label class="text-xs text-slate-600 font-medium">Fila Alvo</label>
+                        <select id="cons-queue" class="border rounded p-1 text-sm outline-none focus:border-amber-500 bg-white">
+                            <option value="orders.payment">Pagamento</option>
+                            <option value="orders.stock">Estoque</option>
+                            <option value="orders.notification">Notificação</option>
+                        </select>
+                        <button onclick="sendConsume()" class="mt-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold py-1.5 rounded transition">Consumir</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -256,6 +287,33 @@
             statusInd.classList.replace('border-emerald-200', 'border-red-200');
             statusInd.innerHTML = `<span class="h-2 w-2 mr-2 rounded-full bg-red-500"></span> Conexão Perdida`;
         };
+
+        // Funções da API do Painel Interativo
+        async function sendProduce() {
+            const count = document.getElementById('prod-count').value;
+            const queue = document.getElementById('prod-queue').value;
+            try {
+                const res = await fetch('/api/produce', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ count: parseInt(count), queue: queue })
+                });
+                if(!res.ok) alert('Erro ao produzir mensagens');
+            } catch(e) { console.error(e); }
+        }
+
+        async function sendConsume() {
+            const count = document.getElementById('cons-count').value;
+            const queue = document.getElementById('cons-queue').value;
+            try {
+                const res = await fetch('/api/consume', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ count: parseInt(count), queue: queue })
+                });
+                if(!res.ok) alert('Erro ao consumir mensagens');
+            } catch(e) { console.error(e); }
+        }
     </script>
 </body>
 </html>

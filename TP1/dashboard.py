@@ -19,10 +19,13 @@ Depois, abra no navegador:
   http://localhost:5000
 """
 
-from flask import Flask, Response, render_template
+from flask import Flask, Response, render_template, request, jsonify
 import requests
 import json
 import time
+import threading
+import pika
+import producer
 
 app = Flask(__name__)
 
@@ -87,6 +90,71 @@ def stream():
             time.sleep(1)
 
     return Response(gerador_eventos(), content_type="text/event-stream")
+
+@app.route("/api/produce", methods=["POST"])
+def api_produce():
+    try:
+        data = request.json
+        count = int(data.get("count", 0))
+        queue = data.get("queue", "all")
+        
+        if count <= 0 or count > 1000:
+            return jsonify({"error": "Contagem inválida. Deve ser entre 1 e 1000."}), 400
+            
+        routing_key = None
+        if queue == "orders.payment":
+            routing_key = "order.payment.new"
+        elif queue == "orders.stock":
+            routing_key = "order.stock.reserve"
+        elif queue == "orders.notification":
+            routing_key = "order.notify.confirm"
+            
+        # Run in background to avoid blocking Flask
+        threading.Thread(target=producer.executar, args=(count, count, routing_key)).start()
+        
+        return jsonify({"status": "success", "message": f"Produzindo {count} mensagens..."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/consume", methods=["POST"])
+def api_consume():
+    try:
+        data = request.json
+        count = int(data.get("count", 0))
+        queue = data.get("queue")
+        
+        if not queue:
+            return jsonify({"error": "Fila não especificada."}), 400
+            
+        if count <= 0:
+            return jsonify({"error": "Contagem inválida. Deve ser maior que 0."}), 400
+            
+        # Consume in background
+        def consume_task(q_name, max_msgs):
+            try:
+                credentials = pika.PlainCredentials(AUTH[0], AUTH[1])
+                params = pika.ConnectionParameters(host="localhost", credentials=credentials)
+                connection = pika.BlockingConnection(params)
+                channel = connection.channel()
+                consumed = 0
+                for _ in range(max_msgs):
+                    method_frame, header_frame, body = channel.basic_get(queue=q_name)
+                    if method_frame:
+                        time.sleep(0.01) # Simulate minor processing delay
+                        channel.basic_ack(method_frame.delivery_tag)
+                        consumed += 1
+                    else:
+                        break
+                connection.close()
+                print(f"[MANUAL CONSUMER] Consumiu {consumed} de {q_name}")
+            except Exception as ex:
+                print(f"[MANUAL CONSUMER] Erro: {ex}")
+            
+        threading.Thread(target=consume_task, args=(queue, count)).start()
+        
+        return jsonify({"status": "success", "message": f"Consumindo de {queue}..."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
