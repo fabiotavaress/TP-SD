@@ -142,11 +142,16 @@ def api_consume():
                 connection = pika.BlockingConnection(params)
                 channel = connection.channel()
                 
+                # A MÁGICA: Pega só 1 mensagem por vez da fila, em vez de sugar tudo de uma vez
+                channel.basic_qos(prefetch_count=1)
+                
                 consumed = 0
+                # Calcula um atraso dinâmico para a animação durar entre 2 a 5 segundos
+                delay = min(0.4, 5.0 / max_msgs) if max_msgs > 0 else 0.2
                 
                 def callback(ch, method, properties, body):
                     nonlocal consumed
-                    time.sleep(0.2) # Atraso para dar tempo de aparecer na tela
+                    time.sleep(delay) 
                     ch.basic_ack(delivery_tag=method.delivery_tag)
                     consumed += 1
                     if consumed >= max_msgs:
@@ -156,7 +161,7 @@ def api_consume():
                 channel.basic_consume(queue=q_name, on_message_callback=callback)
                 
                 # Timeout de segurança: se não tiver mensagens suficientes, ele desliga o consumidor
-                timeout = max(3.0, max_msgs * 0.3)
+                timeout = max(5.0, (max_msgs * delay) + 2.0)
                 connection.call_later(timeout, lambda: channel.stop_consuming())
                 
                 channel.start_consuming()
