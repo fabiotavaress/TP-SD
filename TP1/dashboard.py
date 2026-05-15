@@ -136,15 +136,25 @@ def api_consume():
                 params = pika.ConnectionParameters(host="localhost", credentials=credentials)
                 connection = pika.BlockingConnection(params)
                 channel = connection.channel()
+                
                 consumed = 0
-                for _ in range(max_msgs):
-                    method_frame, header_frame, body = channel.basic_get(queue=q_name)
-                    if method_frame:
-                        time.sleep(0.01) # Simulate minor processing delay
-                        channel.basic_ack(method_frame.delivery_tag)
-                        consumed += 1
-                    else:
-                        break
+                
+                def callback(ch, method, properties, body):
+                    nonlocal consumed
+                    time.sleep(0.2) # Atraso para dar tempo de aparecer na tela
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    consumed += 1
+                    if consumed >= max_msgs:
+                        ch.stop_consuming()
+                
+                # Consumidor real para o RabbitMQ registrar e a estrelinha aparecer
+                channel.basic_consume(queue=q_name, on_message_callback=callback)
+                
+                # Timeout de segurança: se não tiver mensagens suficientes, ele desliga o consumidor
+                timeout = max(3.0, max_msgs * 0.3)
+                connection.call_later(timeout, lambda: channel.stop_consuming())
+                
+                channel.start_consuming()
                 connection.close()
                 print(f"[MANUAL CONSUMER] Consumiu {consumed} de {q_name}")
             except Exception as ex:
