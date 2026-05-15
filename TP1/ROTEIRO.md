@@ -75,3 +75,22 @@ Agora você vai abrir os sites para apresentar:
   ```bash
   sudo docker start rabbit2
   ```
+
+---
+
+## Dica Extra: Como zerar as filas e o sistema
+Se você precisar limpar o histórico de mensagens, consumidores e zerar as filas para começar a apresentação do zero, siga os passos abaixo (leva 10 segundos):
+1. Aperte `Ctrl + C` para parar o `dashboard.py`.
+2. Delete o cluster e os volumes:
+   ```bash
+   sudo docker compose down -v
+   ```
+3. Suba tudo novamente:
+   ```bash
+   sudo docker compose up -d
+   ```
+4. Recrie as filas seguras:
+   ```bash
+   sudo bash init_cluster.sh
+   ```
+5. Ligue o dashboard novamente (`python3 dashboard.py`) e tudo estará 100% zerado!
