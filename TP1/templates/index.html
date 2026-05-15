@@ -25,6 +25,14 @@
             width: 28px; height: 28px; background-color: #fde047; border: 2px solid #854d0e; 
             clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
         }
+        
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column-reverse; overflow-y: auto; }
+            .sidebar { width: 100%; border-right: none; border-top: 2px solid #1e293b; overflow-y: visible; }
+            .network-container { height: 350px; flex: none; }
+            header { flex-direction: column; gap: 0.5rem; text-align: center; }
+            #network { height: 350px; }
+        }
     </style>
 </head>
 <body>
@@ -247,34 +255,31 @@
                 updateQueueStatus('orders.notification', 'q_notification', 'c_notification', result.queues);
                 
                 // --- GERAÇÃO DE BOLINHAS BASEADO NAS TAXAS ---
-                const pRate = result.publish_rate || 0;
-                const dRate = result.deliver_rate || 0;
+                const queueMapping = {
+                    'orders.payment': { q: 'q_payment', c: 'c_payment' },
+                    'orders.stock': { q: 'q_stock', c: 'c_stock' },
+                    'orders.notification': { q: 'q_notification', c: 'c_notification' }
+                };
 
-                // Spawna bolinhas entrando (Producer -> Exchange)
-                if (pRate > 0) {
-                    let amount = Math.min(Math.floor(pRate / 10) + 1, 5); // limite de max partículas visuais
-                    for(let i=0; i<amount; i++) spawnParticle('producer', 'exchange', '#5eead4');
-                    
-                    // Do Exchange para as filas aleatórias (simulando roteamento)
-                    const queueIds = ['q_payment', 'q_stock', 'q_notification'];
-                    for(let i=0; i<amount; i++) {
-                        let targetQ = queueIds[Math.floor(Math.random()*queueIds.length)];
-                        spawnParticle('exchange', targetQ, '#fb923c');
-                    }
-                }
+                for (const [qName, qData] of Object.entries(result.queues)) {
+                    if (queueMapping[qName]) {
+                        const ids = queueMapping[qName];
+                        
+                        // Spawna bolinhas entrando (Producer -> Exchange -> Queue especifica)
+                        if (qData.publish_rate > 0) {
+                            let amount = Math.min(Math.floor(qData.publish_rate / 10) + 1, 3);
+                            for(let i=0; i<amount; i++) {
+                                spawnParticle('producer', 'exchange', '#5eead4');
+                                spawnParticle('exchange', ids.q, '#fb923c');
+                            }
+                        }
 
-                // Spawna bolinhas saindo (Queues -> Consumers)
-                if (dRate > 0) {
-                    let amount = Math.min(Math.floor(dRate / 10) + 1, 5);
-                    const consumers = [];
-                    if(!nodes.get('c_payment').hidden) consumers.push({q: 'q_payment', c: 'c_payment'});
-                    if(!nodes.get('c_stock').hidden) consumers.push({q: 'q_stock', c: 'c_stock'});
-                    if(!nodes.get('c_notification').hidden) consumers.push({q: 'q_notification', c: 'c_notification'});
-                    
-                    for(let i=0; i<amount; i++) {
-                        if (consumers.length > 0) {
-                            let pair = consumers[Math.floor(Math.random()*consumers.length)];
-                            spawnParticle(pair.q, pair.c, '#fde047');
+                        // Spawna bolinhas saindo (Queue especifica -> Consumer especifica)
+                        if (qData.deliver_rate > 0 && !nodes.get(ids.c).hidden) {
+                            let amount = Math.min(Math.floor(qData.deliver_rate / 10) + 1, 3);
+                            for(let i=0; i<amount; i++) {
+                                spawnParticle(ids.q, ids.c, '#fde047');
+                            }
                         }
                     }
                 }

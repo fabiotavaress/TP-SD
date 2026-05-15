@@ -60,10 +60,15 @@ def buscar_metricas():
         dados_filas = {}
         for fila in filas:
             nome = fila.get("name")
+            stats = fila.get("message_stats", {})
+            if not isinstance(stats, dict):
+                stats = {}
             dados_filas[nome] = {
                 "messages": fila.get("messages_ready", 0),
                 "consumers": fila.get("consumers", 0),
-                "acked": fila.get("message_stats", {}).get("ack", 0) if isinstance(fila.get("message_stats"), dict) else 0
+                "acked": stats.get("ack", 0),
+                "publish_rate": stats.get("publish_details", {}).get("rate", 0.0),
+                "deliver_rate": stats.get("deliver_get_details", {}).get("rate", 0.0)
             }
 
         return {
