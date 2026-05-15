@@ -130,6 +130,9 @@ def executar(total: int, intervalo_log: int = 1000, target_routing_key: str = No
 
     inicio = time.time()
     erros = 0
+    
+    # Atraso dinâmico para demorar até 10 segundos, para o usuário "ver" as mensagens entrando
+    delay = min(0.1, 10.0 / total) if total > 0 else 0.0
 
     for i in range(1, total + 1):
         routing_key = target_routing_key if target_routing_key else random.choice(ROUTING_KEYS)
@@ -148,6 +151,8 @@ def executar(total: int, intervalo_log: int = 1000, target_routing_key: str = No
                 ),
                 mandatory=True,
             )
+            if delay > 0:
+                time.sleep(delay)
         except Exception as e:
             erros += 1
             print(f"  [ERRO] Pedido {i}: {e}")

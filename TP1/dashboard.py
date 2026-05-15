@@ -146,8 +146,8 @@ def api_consume():
                 channel.basic_qos(prefetch_count=1)
                 
                 consumed = 0
-                # Calcula um atraso dinâmico para a animação durar entre 2 a 5 segundos
-                delay = min(0.4, 5.0 / max_msgs) if max_msgs > 0 else 0.2
+                # Calcula um atraso dinâmico para a animação durar entre 2 a 10 segundos
+                delay = min(0.4, 10.0 / max_msgs) if max_msgs > 0 else 0.2
                 
                 def callback(ch, method, properties, body):
                     nonlocal consumed
