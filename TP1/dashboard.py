@@ -101,10 +101,11 @@ def api_produce():
     try:
         data = request.json
         count = int(data.get("count", 0))
-        queue = data.get("queue", "all")
+        queue = data.get("queue", "orders.payment")
         
-        if count <= 0 or count > 1000:
-            return jsonify({"error": "Contagem inválida. Deve ser entre 1 e 1000."}), 400
+        # Trava de segurança para a apresentação: apenas 1 mensagem
+        if count != 1:
+            return jsonify({"error": "Para a apresentação, envie apenas 1 mensagem por vez."}), 400
             
         routing_key = None
         if queue == "orders.payment":
@@ -131,8 +132,9 @@ def api_consume():
         if not queue:
             return jsonify({"error": "Fila não especificada."}), 400
             
-        if count <= 0:
-            return jsonify({"error": "Contagem inválida. Deve ser maior que 0."}), 400
+        # Trava de segurança para a apresentação: máximo 100 por clique
+        if count <= 0 or count > 100:
+            return jsonify({"error": "Contagem inválida. Pode consumir no máximo 100 mensagens por vez."}), 400
             
         # Consume in background
         def consume_task(q_name, max_msgs):
