@@ -142,16 +142,20 @@ def api_consume():
                 connection = pika.BlockingConnection(params)
                 channel = connection.channel()
                 
-                # A MÁGICA: Pega só 1 mensagem por vez da fila, em vez de sugar tudo de uma vez
-                channel.basic_qos(prefetch_count=1)
+                # Para poucas mensagens (animação bonita), pega 1 por vez.
+                # Para muitas mensagens (ex: 120 mil), aumenta o prefetch para não demorar muito.
+                prefetch = 1 if max_msgs <= 1000 else (100 if max_msgs <= 20000 else 1000)
+                channel.basic_qos(prefetch_count=prefetch)
                 
                 consumed = 0
                 # Calcula um atraso dinâmico para a animação durar entre 2 a 10 segundos
-                delay = min(0.4, 10.0 / max_msgs) if max_msgs > 0 else 0.2
+                # Para quantidades grandes, remove o delay para consumir rápido
+                delay = min(0.4, 10.0 / max_msgs) if 0 < max_msgs <= 10000 else 0.0
                 
                 def callback(ch, method, properties, body):
                     nonlocal consumed
-                    time.sleep(delay) 
+                    if delay > 0:
+                        time.sleep(delay) 
                     ch.basic_ack(delivery_tag=method.delivery_tag)
                     consumed += 1
                     if consumed >= max_msgs:
@@ -160,8 +164,12 @@ def api_consume():
                 # Consumidor real para o RabbitMQ registrar e a estrelinha aparecer
                 channel.basic_consume(queue=q_name, on_message_callback=callback)
                 
-                # Timeout de segurança: se não tiver mensagens suficientes, ele desliga o consumidor
-                timeout = max(5.0, (max_msgs * delay) + 2.0)
+                # Timeout de segurança: considera o tempo do delay + latência de rede/pika
+                # Adiciona 30 segundos de "gordura" para não parar processos pesados antes da hora
+                overhead_rede = 0.005 # 5ms de overhead por msg
+                tempo_seguro = (max_msgs * delay) + (max_msgs * overhead_rede) + 30.0
+                timeout = max(15.0, tempo_seguro)
+                
                 connection.call_later(timeout, lambda: channel.stop_consuming())
                 
                 channel.start_consuming()
