@@ -183,6 +183,8 @@ if __name__ == "__main__":
                         help="Quantos pedidos enviar (padrão: 10000)")
     parser.add_argument("--report", type=int, default=1000,
                         help="A cada quantos pedidos imprimir progresso (padrão: 1000)")
+    parser.add_argument("--target", type=str, default=None,
+                        help="Routing key alvo específico (ex: order.payment.new)")
     args = parser.parse_args()
 
-    executar(total=args.total, intervalo_log=args.report)
+    executar(total=args.total, intervalo_log=args.report, target_routing_key=args.target)

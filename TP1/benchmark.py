@@ -35,7 +35,7 @@ def run_benchmark(msgs, consumers_count):
     purge_queues()
     
     print(f"\n[BENCHMARK] Gerando {msgs} mensagens...")
-    subprocess.run(["python", "producer.py", "--total", str(msgs)], check=True)
+    subprocess.run(["python", "producer.py", "--total", str(msgs), "--target", "order.payment.new"], check=True)
     
     print(f"\n[BENCHMARK] Iniciando {consumers_count} consumidores...")
     processes = []
@@ -52,8 +52,8 @@ def run_benchmark(msgs, consumers_count):
         if m_count == 0:
             # Garanta que nao ha mensagens unacked na API pra ter ctz
             break
-        # timeout preventivo (10 mins max)
-        if time.time() - start_time > 600:
+        # timeout preventivo (30 mins max)
+        if time.time() - start_time > 1800:
             print("[BENCHMARK] Timeout excedido!")
             break
         time.sleep(1)
